@@ -1,0 +1,772 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// Hotel Management System — Prisma Schema (Phase 1)
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  MANAGER
+  FRONT_DESK
+  HOUSEKEEPING
+  STORE
+  KITCHEN
+}
+
+enum StaffStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum ShiftName {
+  MORNING
+  AFTERNOON
+  NIGHT
+}
+
+enum RoomType {
+  SINGLE
+  DOUBLE
+  TWIN
+  SUITE
+  DELUXE
+}
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  CLEANING
+  MAINTENANCE
+  RESERVED
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+  NO_SHOW
+}
+
+enum BillStatus {
+  OPEN
+  PARTIAL
+  PAID
+  VOIDED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  COMPLIMENTARY
+}
+
+enum PaymentStatus {
+  SUCCESS
+  FAILED
+  REVERSED
+}
+
+enum IdType {
+  NIN
+  PASSPORT
+  DRIVERS_LICENSE
+  VOTERS_CARD
+}
+
+enum ActionType {
+  LOGIN
+  LOGOUT
+  STAFF_CREATED
+  STAFF_UPDATED
+  STAFF_DEACTIVATED
+  ROOM_CREATED
+  ROOM_STATUS_CHANGED
+  GUEST_CREATED
+  GUEST_UPDATED
+  RESERVATION_CREATED
+  RESERVATION_CONFIRMED
+  RESERVATION_CANCELLED
+  CHECK_IN
+  CHECK_OUT
+  BILL_CREATED
+  PAYMENT_POSTED
+  BILL_VOIDED
+  ROOM_CLEANING_STARTED
+  ROOM_CLEANING_COMPLETED
+  ITEM_USAGE_RECORDED
+  STOCK_IN
+  STOCK_OUT
+  STOCK_ADJUSTED
+  STOCK_RECEIVED
+  STOCK_RETURNED
+  DEPARTMENT_REQUEST_CREATED
+  DEPARTMENT_REQUEST_APPROVED
+  DEPARTMENT_REQUEST_REJECTED
+  DEPARTMENT_REQUEST_FULFILLED
+  HOUSEKEEPING_STARTED
+  HOUSEKEEPING_COMPLETED
+  HOUSEKEEPING_USAGE_RECORDED
+  POS_ORDER_CREATED
+  POS_ORDER_CHARGED
+  POS_ORDER_VOIDED
+  POS_ORDER_COMPLETED
+  KITCHEN_TICKET_CREATED
+  KITCHEN_TICKET_UPDATED
+  KITCHEN_TICKET_READY
+  KITCHEN_TICKET_CANCELLED
+  DAILY_SUMMARY_GENERATED
+}
+
+enum EntityType {
+  STAFF
+  ROOM
+  GUEST
+  RESERVATION
+  STAY
+  BILL
+  PAYMENT
+  INVENTORY_ITEM
+  SHIFT
+  STOCK_MOVEMENT
+  DEPARTMENT_REQUEST
+  HOUSEKEEPING_LOG
+  POS_ORDER
+  KITCHEN_TICKET
+  DAILY_SUMMARY
+}
+
+enum SyncStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+// ─── Staff ───────────────────────────────────────────────────────────────────
+
+model Staff {
+  id           String      @id @default(uuid())
+  username     String      @unique
+  passwordHash String
+  fullName     String
+  role         Role
+  status       StaffStatus @default(ACTIVE)
+  createdById  String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  createdBy      Staff?       @relation("StaffCreatedBy", fields: [createdById], references: [id])
+  createdStaff   Staff[]      @relation("StaffCreatedBy")
+  shiftAssignments StaffShift[]
+  shiftLogs      ShiftLog[]
+  activityLogs   ActivityLog[]
+
+  @@map("staff")
+}
+
+// ─── Shifts ──────────────────────────────────────────────────────────────────
+
+model Shift {
+  id        String    @id @default(uuid())
+  name      ShiftName
+  startTime String
+  endTime   String
+  createdAt DateTime  @default(now())
+
+  assignments  StaffShift[]
+  shiftLogs    ShiftLog[]
+  activityLogs ActivityLog[]
+
+  @@map("shifts")
+}
+
+model StaffShift {
+  id        String   @id @default(uuid())
+  staffId   String
+  shiftId   String
+  date      DateTime @db.Date
+  createdAt DateTime @default(now())
+
+  staff Staff @relation(fields: [staffId], references: [id])
+  shift Shift @relation(fields: [shiftId], references: [id])
+
+  @@unique([staffId, date])
+  @@map("staff_shifts")
+}
+
+model ShiftLog {
+  id         String    @id @default(uuid())
+  staffId    String
+  shiftId    String
+  loginTime  DateTime  @default(now())
+  logoutTime DateTime?
+
+  staff Staff @relation(fields: [staffId], references: [id])
+  shift Shift @relation(fields: [shiftId], references: [id])
+
+  @@map("shift_logs")
+}
+
+// ─── Activity Log ─────────────────────────────────────────────────────────────
+
+model ActivityLog {
+  id         String     @id @default(uuid())
+  actionType ActionType
+  entityType EntityType
+  entityId   String
+  staffId    String
+  shiftId    String?
+  timestamp  DateTime   @default(now())
+  metadata   Json?
+  ipAddress  String?
+
+  staff Staff  @relation(fields: [staffId], references: [id])
+  shift Shift? @relation(fields: [shiftId], references: [id])
+
+  @@index([staffId])
+  @@index([entityType, entityId])
+  @@index([timestamp])
+  @@map("activity_logs")
+}
+
+// ─── Config ──────────────────────────────────────────────────────────────────
+
+model Config {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("configs")
+}
+
+// ─── Rooms ───────────────────────────────────────────────────────────────────
+
+model Room {
+  id          String     @id @default(uuid())
+  roomNumber  String     @unique
+  floor       Int
+  type        RoomType
+  status      RoomStatus @default(AVAILABLE)
+  basePrice   Decimal    @db.Decimal(10, 2)
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  reservations     Reservation[]
+  stays            Stay[]
+  housekeepingLogs HousekeepingLog[]
+  posOrders        PosOrder[]
+
+  @@map("rooms")
+}
+
+// ─── Guests ──────────────────────────────────────────────────────────────────
+
+model Guest {
+  id          String   @id @default(uuid())
+  fullName    String
+  phone       String
+  email       String?
+  idType      IdType?
+  idNumber    String?
+  nationality String?
+  address     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  reservations Reservation[]
+  stays        Stay[]
+
+  @@map("guests")
+}
+
+// ─── Reservations ────────────────────────────────────────────────────────────
+
+model Reservation {
+  id           String            @id @default(uuid())
+  guestId      String
+  roomId       String
+  checkInDate  DateTime          @db.Date
+  checkOutDate DateTime          @db.Date
+  adults       Int               @default(1)
+  children     Int               @default(0)
+  status       ReservationStatus @default(PENDING)
+  totalAmount  Decimal           @db.Decimal(10, 2)
+  notes        String?
+  createdById  String
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  guest Guest @relation(fields: [guestId], references: [id])
+  room  Room  @relation(fields: [roomId], references: [id])
+  stay  Stay?
+
+  @@map("reservations")
+}
+
+// ─── Stays ───────────────────────────────────────────────────────────────────
+
+model Stay {
+  id            String    @id @default(uuid())
+  reservationId String    @unique
+  guestId       String
+  roomId        String
+  checkInAt     DateTime  @default(now())
+  checkOutAt    DateTime?
+  checkInById   String
+  checkOutById  String?
+  createdAt     DateTime  @default(now())
+
+  reservation Reservation @relation(fields: [reservationId], references: [id])
+  guest       Guest       @relation(fields: [guestId], references: [id])
+  room        Room        @relation(fields: [roomId], references: [id])
+  bill        Bill?
+
+  @@map("stays")
+}
+
+// ─── Billing ─────────────────────────────────────────────────────────────────
+
+model Bill {
+  id          String     @id @default(uuid())
+  stayId      String     @unique
+  totalAmount Decimal    @db.Decimal(10, 2) @default(0)
+  paidAmount  Decimal    @db.Decimal(10, 2) @default(0)
+  status      BillStatus @default(OPEN)
+  createdById String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  stay      Stay          @relation(fields: [stayId], references: [id])
+  payments  Payment[]
+  lineItems BillLineItem[]
+
+  @@map("bills")
+}
+
+model BillLineItem {
+  id          String   @id @default(uuid())
+  billId      String
+  description String
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  totalPrice  Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+
+  bill Bill @relation(fields: [billId], references: [id])
+
+  @@map("bill_line_items")
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  billId      String
+  amount      Decimal       @db.Decimal(10, 2)
+  method      PaymentMethod
+  status      PaymentStatus @default(SUCCESS)
+  reference   String?
+  staffId     String
+  shiftId     String?
+  processedAt DateTime      @default(now())
+  notes       String?
+
+  bill Bill @relation(fields: [billId], references: [id])
+
+  @@map("payments")
+}
+
+// ─── Housekeeping ─────────────────────────────────────────────────────────────
+
+model HousekeepingLog {
+  id          String    @id @default(uuid())
+  roomId      String
+  staffId     String
+  shiftId     String?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  notes       String?
+
+  room   Room                @relation(fields: [roomId], references: [id])
+  usages HousekeepingUsage[]
+
+  @@map("housekeeping_logs")
+}
+
+// ─── Sync Outbox ─────────────────────────────────────────────────────────────
+
+model SyncOutbox {
+  id          String     @id @default(uuid())
+  eventType   String
+  payload     Json
+  status      SyncStatus @default(PENDING)
+  attempts    Int        @default(0)
+  lastAttempt DateTime?
+  sentAt      DateTime?
+  createdAt   DateTime   @default(now())
+
+  @@index([status])
+  @@map("sync_outbox")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 2 ADDITIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─── Phase 2 Enums ────────────────────────────────────────────────────────────
+
+enum StockMovementType {
+  IN           // stock received from supplier
+  OUT          // issued to a department
+  USAGE        // consumed during housekeeping/service
+  ADJUSTMENT   // manual correction by store manager
+  RETURN       // department returns unused items to store
+}
+
+enum Department {
+  STORE
+  KITCHEN
+  BAR
+  HOUSEKEEPING
+  FRONT_DESK
+  MAINTENANCE
+}
+
+enum ItemStatus {
+  OK
+  LOW_STOCK
+  OUT_OF_STOCK
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  FULFILLED
+}
+
+// ─── Inventory Category ───────────────────────────────────────────────────────
+
+model InventoryCategory {
+  id          String   @id @default(uuid())
+  name        String   @unique  // e.g. Food, Beverages, Cleaning, Linen, Toiletries
+  description String?
+  createdAt   DateTime @default(now())
+
+  items       InventoryItem[]
+  posProducts PosProduct[]
+
+  @@map("inventory_categories")
+}
+
+// ─── Inventory Item ───────────────────────────────────────────────────────────
+
+model InventoryItem {
+  id           String    @id @default(uuid())
+  name         String
+  categoryId   String
+  unit         String    // e.g. kg, litres, pieces, cartons
+  quantity     Decimal   @db.Decimal(10, 2) @default(0)
+  reorderLevel Decimal   @db.Decimal(10, 2) @default(0)
+  status       ItemStatus @default(OK)
+  description  String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  category         InventoryCategory    @relation(fields: [categoryId], references: [id])
+  stockMovements   StockMovement[]
+  requestItems     DepartmentRequestItem[]
+  housekeepingUsages HousekeepingUsage[]
+  posProducts        PosProduct[]
+
+  @@map("inventory_items")
+}
+
+// ─── Stock Movement (auditable ledger) ───────────────────────────────────────
+
+model StockMovement {
+  id          String            @id @default(uuid())
+  itemId      String
+  quantity    Decimal           @db.Decimal(10, 2)
+  type        StockMovementType
+  department  Department
+  staffId     String
+  shiftId     String?
+  requestId   String?           // linked to DepartmentRequest if type=OUT
+  note        String?
+  createdAt   DateTime          @default(now())
+
+  item    InventoryItem     @relation(fields: [itemId], references: [id])
+  request DepartmentRequest? @relation(fields: [requestId], references: [id])
+
+  @@index([itemId])
+  @@index([staffId])
+  @@index([createdAt])
+  @@map("stock_movements")
+}
+
+// ─── Department Request ───────────────────────────────────────────────────────
+
+model DepartmentRequest {
+  id            String        @id @default(uuid())
+  department    Department
+  requestedById String        // staff who made the request
+  reviewedById  String?       // store staff who approved/rejected
+  status        RequestStatus @default(PENDING)
+  note          String?
+  reviewNote    String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  items          DepartmentRequestItem[]
+  stockMovements StockMovement[]
+
+  @@index([status])
+  @@index([department])
+  @@map("department_requests")
+}
+
+model DepartmentRequestItem {
+  id          String  @id @default(uuid())
+  requestId   String
+  itemId      String
+  quantity    Decimal @db.Decimal(10, 2)
+  fulfilledQty Decimal @db.Decimal(10, 2) @default(0)
+
+  request DepartmentRequest @relation(fields: [requestId], references: [id])
+  item    InventoryItem     @relation(fields: [itemId], references: [id])
+
+  @@map("department_request_items")
+}
+
+// ─── Housekeeping Usage (links cleaning log → inventory consumed) ─────────────
+
+model HousekeepingUsage {
+  id             String   @id @default(uuid())
+  housekeepingLogId String
+  itemId         String
+  quantity       Decimal  @db.Decimal(10, 2)
+  staffId        String
+  shiftId        String?
+  createdAt      DateTime @default(now())
+
+  housekeepingLog HousekeepingLog @relation(fields: [housekeepingLogId], references: [id])
+  item            InventoryItem   @relation(fields: [itemId], references: [id])
+
+  @@map("housekeeping_usages")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 3 ADDITIONS — POS + KITCHEN + REPORTING
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ─── Phase 3 Enums ────────────────────────────────────────────────────────────
+
+enum ProductType {
+  FOOD
+  BEVERAGE
+}
+
+enum OrderType {
+  DINE_IN
+  TAKEAWAY
+  ROOM_SERVICE
+}
+
+enum PosOrderStatus {
+  OPEN
+  CHARGED
+  COMPLETED
+  VOIDED
+}
+
+enum PosPaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  POST_TO_ROOM
+  COMPLIMENTARY
+  SPLIT
+}
+
+enum KitchenTicketStatus {
+  RECEIVED
+  IN_PROGRESS
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+enum KitchenItemStatus {
+  QUEUED
+  PREPARING
+  COOKING
+  DONE
+  CANCELLED
+}
+
+// ─── POS Product (Menu) ───────────────────────────────────────────────────────
+
+model PosProduct {
+  id                  String      @id @default(uuid())
+  name                String
+  type                ProductType
+  price               Decimal     @db.Decimal(10, 2)
+  categoryId          String?
+  linkedInventoryItemId String?   // for auto stock deduction
+  isAvailable         Boolean     @default(true)
+  description         String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  category      InventoryCategory? @relation(fields: [categoryId], references: [id])
+  inventoryItem InventoryItem?     @relation(fields: [linkedInventoryItemId], references: [id])
+  orderItems    PosOrderItem[]
+
+  @@map("pos_products")
+}
+
+// ─── POS Order ────────────────────────────────────────────────────────────────
+
+model PosOrder {
+  id          String         @id @default(uuid())
+  type        OrderType
+  status      PosOrderStatus @default(OPEN)
+  tableRef    String?        // table number for DINE_IN
+  roomId      String?        // for ROOM_SERVICE and POST_TO_ROOM
+  staffId     String
+  shiftId     String?
+  note        String?
+  totalAmount Decimal        @db.Decimal(10, 2) @default(0)
+  voidedById  String?
+  voidReason  String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  room     Room?          @relation(fields: [roomId], references: [id])
+  items    PosOrderItem[]
+  payments PosPayment[]
+  ticket   KitchenTicket?
+
+  @@index([staffId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("pos_orders")
+}
+
+// ─── POS Order Item ───────────────────────────────────────────────────────────
+
+model PosOrderItem {
+  id              String  @id @default(uuid())
+  orderId         String
+  productId       String
+  quantity        Int
+  unitPrice       Decimal @db.Decimal(10, 2)
+  totalPrice      Decimal @db.Decimal(10, 2)
+  notes           String? // special instructions e.g. "no pepper"
+  sentToKitchen   Boolean @default(false)
+
+  order   PosOrder   @relation(fields: [orderId], references: [id])
+  product PosProduct @relation(fields: [productId], references: [id])
+
+  @@map("pos_order_items")
+}
+
+// ─── POS Payment ─────────────────────────────────────────────────────────────
+
+model PosPayment {
+  id          String           @id @default(uuid())
+  orderId     String
+  amount      Decimal          @db.Decimal(10, 2)
+  method      PosPaymentMethod
+  reference   String?
+  staffId     String
+  shiftId     String?
+  processedAt DateTime         @default(now())
+  note        String?
+
+  order PosOrder @relation(fields: [orderId], references: [id])
+
+  @@map("pos_payments")
+}
+
+// ─── Kitchen Ticket ───────────────────────────────────────────────────────────
+
+model KitchenTicket {
+  id        String              @id @default(uuid())
+  orderId   String              @unique
+  status    KitchenTicketStatus @default(RECEIVED)
+  note      String?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  order PosOrder            @relation(fields: [orderId], references: [id])
+  items KitchenTicketItem[]
+
+  @@map("kitchen_tickets")
+}
+
+// ─── Kitchen Ticket Item ──────────────────────────────────────────────────────
+
+model KitchenTicketItem {
+  id          String            @id @default(uuid())
+  ticketId    String
+  productId   String
+  productName String            // snapshot — in case product name changes later
+  quantity    Int
+  notes       String?
+  status      KitchenItemStatus @default(QUEUED)
+  assignedTo  String?           // staffId of cook assigned
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  ticket KitchenTicket @relation(fields: [ticketId], references: [id])
+
+  @@map("kitchen_ticket_items")
+}
+
+// ─── Waste Log ────────────────────────────────────────────────────────────────
+
+model WasteLog {
+  id          String   @id @default(uuid())
+  ticketId    String
+  productId   String
+  productName String
+  quantity    Int
+  reason      String   // e.g. "Order cancelled after prep started"
+  staffId     String
+  shiftId     String?
+  createdAt   DateTime @default(now())
+
+  @@map("waste_logs")
+}
+
+// ─── Daily Summary (for cloud sync + AI) ─────────────────────────────────────
+
+model DailySummary {
+  id                    String   @id @default(uuid())
+  date                  DateTime @unique @db.Date
+  totalRevenue          Decimal  @db.Decimal(12, 2) @default(0)
+  occupancyRate         Decimal  @db.Decimal(5, 2)  @default(0) // percentage
+  totalCheckins         Int      @default(0)
+  totalCheckouts        Int      @default(0)
+  totalPosSales         Decimal  @db.Decimal(12, 2) @default(0)
+  topSellingItems       Json?    // [{ productId, name, qty, revenue }]
+  stockMovementsSummary Json?    // { totalIn, totalOut, totalUsage, lowStockItems[] }
+  notes                 String?
+  generatedAt           DateTime @default(now())
+
+  @@map("daily_summaries")
+}
