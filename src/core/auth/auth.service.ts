@@ -15,10 +15,10 @@ export async function login(username: string, password: string, ipAddress?: stri
   if (!valid) throw new AppError(401, 'Invalid credentials', 'INVALID_CREDENTIALS')
 
   const token = jwt.sign(
-    { staffId: staff.id, username: staff.username, role: staff.role },
-    process.env.JWT_SECRET!,
-    { expiresIn: process.env.JWT_EXPIRES_IN ?? '8h' }
-  )
+  { staffId: staff.id, username: staff.username, role: staff.role },
+  process.env.JWT_SECRET!,
+  { expiresIn: (process.env.JWT_EXPIRES_IN ?? '8h') as any }
+)
 
   // Find today's shift assignment (for context only — no blocking)
   const today = new Date()

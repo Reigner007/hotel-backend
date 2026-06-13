@@ -20,12 +20,11 @@ export async function logActivity(params: LogActivityParams): Promise<void> {
         entityId: params.entityId,
         staffId: params.staffId,
         shiftId: params.shiftId ?? null,
-        metadata: params.metadata ?? {},
+        metadata: (params.metadata ?? {}) as any,
         ipAddress: params.ipAddress ?? null,
       },
     })
   } catch (err) {
-    // Activity log failure must never crash the main request
     console.error('[ActivityLog] Failed to write log:', err)
   }
 }
