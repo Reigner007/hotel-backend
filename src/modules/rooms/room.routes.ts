@@ -95,9 +95,26 @@ router.get('/', async (_req, res, next) => {
  */
 router.get('/:id', async (req, res, next) => {
   try {
-    const room = await prisma.room.findUnique({ where: { id: req.params.id } })
+    const room = await prisma.room.findUnique({
+      where: { id: req.params.id },
+      include: { stays: { where: { checkOutAt: null }, include: { guest: true }, take: 1 } },
+    })
     if (!room) throw new AppError(404, 'Room not found', 'NOT_FOUND')
-    res.json({ success: true, data: room })
+    const mapped = {
+      id: room.id,
+      number: room.roomNumber,
+      roomNumber: room.roomNumber,
+      floor: room.floor,
+      type: room.type.toLowerCase(),
+      price: Number(room.basePrice),
+      basePrice: Number(room.basePrice),
+      status: room.status === 'DIRTY' ? 'dirty' : room.status === 'CLEANING' ? 'dirty' : room.status.toLowerCase(),
+      guestName: room.stays[0]?.guest?.name || room.stays[0]?.guest?.fullName || null,
+      description: room.description,
+      createdAt: room.createdAt,
+      updatedAt: room.updatedAt,
+    }
+    res.json({ success: true, data: mapped })
   } catch (err) { next(err) }
 })
 
