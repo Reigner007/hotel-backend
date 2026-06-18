@@ -197,7 +197,7 @@ router.post('/', authorize('ADMIN', 'MANAGER'), async (req, res, next) => {
 router.patch('/:id/status', authorize('ADMIN', 'MANAGER', 'FRONT_DESK', 'HOUSEKEEPING'), async (req, res, next) => {
   try {
     let { status } = req.body
-    if (status === 'dirty') status = 'DIRTY'
+    if (status === 'dirty' || status === 'DIRTY') status = 'CLEANING'
     status = status.toUpperCase()
     const validStatuses = Object.values(RoomStatus)
     if (!validStatuses.includes(status)) {

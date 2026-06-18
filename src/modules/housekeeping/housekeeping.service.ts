@@ -6,9 +6,14 @@ import { recordMovement } from '../stock/stock.service'
 // ─── Start a cleaning session ─────────────────────────────────────────────────
 
 export async function startCleaning(
-  data: { roomId: string; staffId: string; shiftId?: string; notes?: string }
+  data: { roomId?: string; roomNumber?: string; staffId: string; shiftId?: string; notes?: string }
 ) {
-  const room = await prisma.room.findUnique({ where: { id: data.roomId } })
+  let room
+  if (data.roomId) {
+    room = await prisma.room.findUnique({ where: { id: data.roomId } })
+  } else if (data.roomNumber) {
+    room = await prisma.room.findFirst({ where: { roomNumber: data.roomNumber } })
+  }
   if (!room) throw new AppError(404, 'Room not found', 'NOT_FOUND')
   if (room.status !== 'CLEANING') {
     throw new AppError(400, `Room must be in CLEANING status to start housekeeping. Current status: ${room.status}`, 'INVALID_STATE')
@@ -16,13 +21,13 @@ export async function startCleaning(
 
   // Check no active log already exists for this room
   const active = await prisma.housekeepingLog.findFirst({
-    where: { roomId: data.roomId, completedAt: null },
+    where: { roomId: room.id, completedAt: null },
   })
   if (active) throw new AppError(409, 'An active cleaning session already exists for this room', 'CONFLICT')
 
   const log = await prisma.housekeepingLog.create({
     data: {
-      roomId: data.roomId,
+      roomId: room.id,
       staffId: data.staffId,
       shiftId: data.shiftId ?? null,
       notes: data.notes,
@@ -36,7 +41,7 @@ export async function startCleaning(
     entityId: log.id,
     staffId: data.staffId,
     shiftId: data.shiftId,
-    metadata: { roomId: data.roomId, roomNumber: room.roomNumber },
+    metadata: { roomId: room.id, roomNumber: room.roomNumber },
   })
 
   return log

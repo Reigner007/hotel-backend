@@ -146,10 +146,11 @@ router.get('/:id', authorize('ADMIN', 'MANAGER', 'HOUSEKEEPING'), async (req, re
  */
 router.post('/start', authorize('ADMIN', 'MANAGER', 'HOUSEKEEPING'), async (req, res, next) => {
   try {
-    const { roomId, shiftId, notes } = req.body
-    if (!roomId) throw new AppError(400, 'roomId is required', 'VALIDATION')
+    const { roomId, roomNumber, shiftId, notes } = req.body
+    if (!roomId && !roomNumber) throw new AppError(400, 'roomId or roomNumber is required', 'VALIDATION')
     const log = await housekeepingService.startCleaning({
       roomId,
+      roomNumber,
       staffId: req.staff!.staffId,
       shiftId,
       notes,
