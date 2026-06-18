@@ -85,6 +85,11 @@ app.use(`${v1}/pos`, posRoutes);
 app.use(`${v1}/kitchen`, kitchenRoutes);
 app.use(`${v1}/reporting`, reportingRoutes);
 
+// Hotel profile
+app.get(`${v1}/hotel-profile`, (_req, res) => {
+  res.json({ success: true, data: { name: process.env.HOTEL_NAME || 'Edis Premier Hotel and Suites', address: '', city: '', phone: '', logo: '' } });
+});
+
 // Health check
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

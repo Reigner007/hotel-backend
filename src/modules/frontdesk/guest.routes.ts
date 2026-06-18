@@ -181,6 +181,9 @@ router.post('/', authorize('ADMIN', 'MANAGER', 'FRONT_DESK'), async (req, res, n
 
     let idTypeVal = idType
     if (idType === 'National ID (NIN)') idTypeVal = 'NIN'
+    else if (idType === "Driver's License") idTypeVal = 'DRIVERS_LICENSE'
+    else if (idType === 'Passport') idTypeVal = 'PASSPORT'
+    else if (idType === "Voter's Card") idTypeVal = 'VOTERS_CARD'
 
     const guest = await prisma.guest.create({
       data: {
@@ -264,7 +267,13 @@ router.patch('/:id', authorize('ADMIN', 'MANAGER', 'FRONT_DESK'), async (req, re
     if (name !== undefined) data.name = name
     if (phone !== undefined) data.phone = phone
     if (email !== undefined) data.email = email
-    if (idType !== undefined) data.idType = idType === 'National ID (NIN)' ? 'NIN' : idType
+    if (idType !== undefined) {
+      if (idType === 'National ID (NIN)') data.idType = 'NIN'
+      else if (idType === "Driver's License") data.idType = 'DRIVERS_LICENSE'
+      else if (idType === 'Passport') data.idType = 'PASSPORT'
+      else if (idType === "Voter's Card") data.idType = 'VOTERS_CARD'
+      else data.idType = idType
+    }
     if (idNumber !== undefined) data.idNumber = idNumber
     if (nationality !== undefined) data.nationality = nationality
     if (address !== undefined) data.address = address
