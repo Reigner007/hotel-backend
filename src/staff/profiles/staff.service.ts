@@ -5,12 +5,15 @@ import { AppError } from '../../shared/middleware/errorHandler'
 import { logActivity } from '../../core/activity-logs/activityLog.service'
 
 const PUBLIC_SELECT = {
-  id: true, username: true, fullName: true,
-  role: true, status: true, createdAt: true,
+  id: true, username: true, fullName: true, name: true,
+  role: true, status: true, phone: true, email: true,
+  shift: true, lastActive: true, avatarColor: true,
+  permissions: true, joinedDate: true, actionsLogged: true,
+  createdAt: true,
 }
 
 export async function createStaff(
-  data: { username: string; password: string; fullName: string; role: Role },
+  data: { username: string; password: string; fullName: string; name?: string; role: Role; phone?: string; email?: string; shift?: string },
   createdById: string
 ) {
   const exists = await prisma.staff.findUnique({ where: { username: data.username } })
@@ -18,7 +21,15 @@ export async function createStaff(
 
   const passwordHash = await bcrypt.hash(data.password, 12)
   const staff = await prisma.staff.create({
-    data: { username: data.username, passwordHash, fullName: data.fullName, role: data.role, createdById },
+    data: {
+      username: data.username, passwordHash,
+      fullName: data.fullName, name: data.name || data.fullName,
+      role: data.role,
+      phone: data.phone || '',
+      email: data.email || '',
+      shift: data.shift || 'Morning',
+      createdById,
+    },
     select: PUBLIC_SELECT,
   })
 

@@ -46,6 +46,7 @@ enum RoomStatus {
   AVAILABLE
   OCCUPIED
   CLEANING
+  DIRTY
   MAINTENANCE
   RESERVED
 }
@@ -84,6 +85,14 @@ enum IdType {
   PASSPORT
   DRIVERS_LICENSE
   VOTERS_CARD
+  NATIONAL_ID_NIN
+}
+
+enum GuestStatus {
+  RESERVED
+  IN_HOUSE
+  CHECKED_OUT
+  CHECKOUT_TODAY
 }
 
 enum ActionType {
@@ -157,15 +166,24 @@ enum SyncStatus {
 // ─── Staff ───────────────────────────────────────────────────────────────────
 
 model Staff {
-  id           String      @id @default(uuid())
-  username     String      @unique
-  passwordHash String
-  fullName     String
-  role         Role
-  status       StaffStatus @default(ACTIVE)
-  createdById  String?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id            String      @id @default(uuid())
+  username      String      @unique
+  passwordHash  String
+  fullName      String
+  name          String?
+  role          Role
+  status        StaffStatus @default(ACTIVE)
+  phone         String?
+  email         String?
+  shift         String      @default("Morning")
+  lastActive    String?
+  avatarColor   String?
+  permissions   Int         @default(1)
+  joinedDate    String?
+  actionsLogged Int         @default(0)
+  createdById   String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   createdBy      Staff?       @relation("StaffCreatedBy", fields: [createdById], references: [id])
   createdStaff   Staff[]      @relation("StaffCreatedBy")
@@ -276,16 +294,23 @@ model Room {
 // ─── Guests ──────────────────────────────────────────────────────────────────
 
 model Guest {
-  id          String   @id @default(uuid())
+  id          String       @id @default(uuid())
   fullName    String
+  name        String?
   phone       String
   email       String?
   idType      IdType?
   idNumber    String?
   nationality String?
   address     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  status      GuestStatus  @default(RESERVED)
+  notes       String?
+  avatarUrl   String?
+  idImage     String?
+  lastStay    DateTime?
+  totalVisits Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 
   reservations Reservation[]
   stays        Stay[]

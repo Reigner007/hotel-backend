@@ -47,8 +47,18 @@ export async function login(username: string, password: string, ipAddress?: stri
     staff: {
       id: staff.id,
       username: staff.username,
+      name: staff.name || staff.fullName,
       fullName: staff.fullName,
       role: staff.role,
+      status: staff.status === 'ACTIVE' ? 'Active' : staff.status === 'INACTIVE' ? 'Offline' : 'Suspended',
+      phone: staff.phone || '',
+      email: staff.email || '',
+      shift: staff.shift || 'Morning',
+      lastActive: staff.lastActive || '',
+      avatarColor: staff.avatarColor || 'bg-navy',
+      permissions: staff.permissions ?? 1,
+      joinedDate: staff.joinedDate || '',
+      actionsLogged: staff.actionsLogged ?? 0,
     },
   }
 }

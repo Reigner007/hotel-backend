@@ -40,7 +40,20 @@ router.use(authenticate)
 router.get('/', async (_req, res, next) => {
   try {
     const rooms = await prisma.room.findMany({ orderBy: { roomNumber: 'asc' } })
-    res.json({ success: true, data: rooms })
+    const mapped = rooms.map(r => ({
+      id: r.id,
+      number: r.roomNumber,
+      roomNumber: r.roomNumber,
+      floor: r.floor,
+      type: r.type.toLowerCase(),
+      price: Number(r.basePrice),
+      basePrice: Number(r.basePrice),
+      status: r.status === 'DIRTY' ? 'dirty' : r.status === 'CLEANING' ? 'dirty' : r.status.toLowerCase(),
+      description: r.description,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    }))
+    res.json({ success: true, data: mapped })
   } catch (err) { next(err) }
 })
 
@@ -179,11 +192,14 @@ router.post('/', authorize('ADMIN', 'MANAGER'), async (req, res, next) => {
  */
 router.patch('/:id/status', authorize('ADMIN', 'MANAGER', 'FRONT_DESK', 'HOUSEKEEPING'), async (req, res, next) => {
   try {
-    const { status } = req.body
-    if (!Object.values(RoomStatus).includes(status)) {
-      throw new AppError(400, `status must be one of: ${Object.values(RoomStatus).join(', ')}`, 'VALIDATION')
+    let { status } = req.body
+    if (status === 'dirty') status = 'DIRTY'
+    status = status.toUpperCase()
+    const validStatuses = Object.values(RoomStatus)
+    if (!validStatuses.includes(status)) {
+      throw new AppError(400, `status must be one of: ${validStatuses.join(', ')}`, 'VALIDATION')
     }
-    const room = await prisma.room.update({ where: { id: req.params.id }, data: { status } })
+    const room = await prisma.room.update({ where: { id: req.params.id }, data: { status: status as any } })
     await logActivity({
       actionType: 'ROOM_STATUS_CHANGED', entityType: 'ROOM',
       entityId: room.id, staffId: req.staff!.staffId,

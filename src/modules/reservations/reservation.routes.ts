@@ -155,7 +155,7 @@ router.get('/:id', async (req, res, next) => {
  */
 router.post('/', authorize('ADMIN', 'MANAGER', 'FRONT_DESK'), async (req, res, next) => {
   try {
-    const { guestId, roomId, checkInDate, checkOutDate, adults, children, notes } = req.body
+    const { guestId, roomId, checkInDate, checkOutDate, adults, children, notes, amount, status } = req.body
     if (!guestId || !roomId || !checkInDate || !checkOutDate) {
       throw new AppError(400, 'guestId, roomId, checkInDate, and checkOutDate are required', 'VALIDATION')
     }
@@ -175,10 +175,20 @@ router.post('/', authorize('ADMIN', 'MANAGER', 'FRONT_DESK'), async (req, res, n
     const room = await prisma.room.findUnique({ where: { id: roomId } })
     if (!room) throw new AppError(404, 'Room not found', 'NOT_FOUND')
 
-    const nights = Math.ceil(
-      (new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60 * 24)
-    )
-    const totalAmount = Number(room.basePrice) * nights
+    let totalAmount: number
+    if (amount !== undefined) {
+      totalAmount = Number(amount)
+    } else {
+      const nights = Math.ceil(
+        (new Date(checkOutDate).getTime() - new Date(checkInDate).getTime()) / (1000 * 60 * 60 * 24)
+      )
+      totalAmount = Number(room.basePrice) * nights
+    }
+
+    let reservationStatus = status || 'CONFIRMED'
+    if (reservationStatus === 'Pending') reservationStatus = 'PENDING'
+    else if (reservationStatus === 'Paid' || reservationStatus === 'Part Paid') reservationStatus = 'CONFIRMED'
+    else if (reservationStatus === 'Checked In') reservationStatus = 'CHECKED_IN'
 
     const reservation = await prisma.reservation.create({
       data: {
@@ -188,7 +198,7 @@ router.post('/', authorize('ADMIN', 'MANAGER', 'FRONT_DESK'), async (req, res, n
         adults: adults ?? 1,
         children: children ?? 0,
         totalAmount, notes,
-        status: 'CONFIRMED',
+        status: reservationStatus as any,
         createdById: req.staff!.staffId,
       },
       include: { guest: true, room: true },
