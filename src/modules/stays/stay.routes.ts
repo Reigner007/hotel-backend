@@ -270,10 +270,16 @@ router.post('/check-in', authorize('ADMIN', 'MANAGER', 'FRONT_DESK'), async (req
  */
 router.post('/:id/check-out', authorize('ADMIN', 'MANAGER', 'FRONT_DESK'), async (req, res, next) => {
   try {
-    const stay = await prisma.stay.findUnique({
+    let stay = await prisma.stay.findUnique({
       where: { id: req.params.id },
       include: { bill: true },
     })
+    if (!stay) {
+      stay = await prisma.stay.findFirst({
+        where: { roomId: req.params.id, checkOutAt: null },
+        include: { bill: true },
+      })
+    }
     if (!stay) throw new AppError(404, 'Stay not found', 'NOT_FOUND')
     if (stay.checkOutAt) throw new AppError(409, 'Guest already checked out', 'CONFLICT')
     if (stay.bill?.status === 'OPEN' || stay.bill?.status === 'PARTIAL') {

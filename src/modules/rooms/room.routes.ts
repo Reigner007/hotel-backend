@@ -39,7 +39,10 @@ router.use(authenticate)
  */
 router.get('/', async (_req, res, next) => {
   try {
-    const rooms = await prisma.room.findMany({ orderBy: { roomNumber: 'asc' } })
+    const rooms = await prisma.room.findMany({
+      orderBy: { roomNumber: 'asc' },
+      include: { stays: { where: { checkOutAt: null }, include: { guest: true }, take: 1 } },
+    })
     const mapped = rooms.map(r => ({
       id: r.id,
       number: r.roomNumber,
@@ -49,6 +52,7 @@ router.get('/', async (_req, res, next) => {
       price: Number(r.basePrice),
       basePrice: Number(r.basePrice),
       status: r.status === 'DIRTY' ? 'dirty' : r.status === 'CLEANING' ? 'dirty' : r.status.toLowerCase(),
+      guestName: r.stays[0]?.guest?.name || r.stays[0]?.guest?.fullName || null,
       description: r.description,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
