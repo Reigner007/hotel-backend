@@ -282,9 +282,6 @@ router.post('/:id/check-out', authorize('ADMIN', 'MANAGER', 'FRONT_DESK'), async
     }
     if (!stay) throw new AppError(404, 'Stay not found', 'NOT_FOUND')
     if (stay.checkOutAt) throw new AppError(409, 'Guest already checked out', 'CONFLICT')
-    if (stay.bill?.status === 'OPEN' || stay.bill?.status === 'PARTIAL') {
-      throw new AppError(400, 'Bill must be fully paid before check-out', 'UNPAID_BILL')
-    }
 
     await prisma.$transaction(async (tx) => {
       await tx.stay.update({
