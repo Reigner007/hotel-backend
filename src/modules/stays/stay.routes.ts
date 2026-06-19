@@ -47,7 +47,7 @@ router.get('/', async (_req, res, next) => {
   try {
     const stays = await prisma.stay.findMany({
       where: { checkOutAt: null },
-      include: { guest: true, room: true, reservation: true },
+      include: { guest: true, room: true, reservation: true, bill: true },
       orderBy: { checkInAt: 'desc' },
     })
     res.json({ success: true, data: stays })
