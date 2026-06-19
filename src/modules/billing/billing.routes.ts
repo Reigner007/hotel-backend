@@ -200,7 +200,7 @@ router.post('/:billId/pay', authorize('ADMIN', 'MANAGER', 'FRONT_DESK'), async (
  */
 router.post('/:billId/line-items', authorize('ADMIN', 'MANAGER', 'FRONT_DESK'), async (req, res, next) => {
   try {
-    const { description, quantity, unitPrice } = req.body
+    const { description, quantity, unitPrice, category } = req.body
     if (!description || unitPrice === undefined) {
       throw new AppError(400, 'description and unitPrice are required', 'VALIDATION')
     }
@@ -213,7 +213,7 @@ router.post('/:billId/line-items', authorize('ADMIN', 'MANAGER', 'FRONT_DESK'), 
 
     const lineItem = await prisma.$transaction(async (tx) => {
       const item = await tx.billLineItem.create({
-        data: { billId: bill.id, description, quantity: qty, unitPrice, totalPrice },
+        data: { billId: bill.id, description, category: category || null, quantity: qty, unitPrice, totalPrice },
       })
       await tx.bill.update({ where: { id: bill.id }, data: { totalAmount: { increment: totalPrice } } })
       return item

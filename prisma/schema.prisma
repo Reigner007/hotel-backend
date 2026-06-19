@@ -387,6 +387,7 @@ model BillLineItem {
   id          String   @id @default(uuid())
   billId      String
   description String
+  category    String?
   quantity    Int      @default(1)
   unitPrice   Decimal  @db.Decimal(10, 2)
   totalPrice  Decimal  @db.Decimal(10, 2)
