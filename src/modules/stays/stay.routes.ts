@@ -207,7 +207,7 @@ router.post('/check-in', authorize('ADMIN', 'MANAGER', 'FRONT_DESK'), async (req
       await tx.room.update({ where: { id: reservation.roomId }, data: { status: 'OCCUPIED' } })
       const stay = (await tx.stay.findUnique({
         where: { id: rawStay.id },
-        include: { guest: true, room: true, reservation: true },
+      include: { guest: true, room: true, reservation: true, bill: true },
       }))!
       const bill = (await tx.bill.findUnique({
         where: { id: rawBill.id },
