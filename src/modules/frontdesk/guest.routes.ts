@@ -312,4 +312,45 @@ router.patch('/:id', authorize('ADMIN', 'MANAGER', 'FRONT_DESK'), async (req, re
   } catch (err) { next(err) }
 })
 
+/**
+ * @swagger
+ * /guests/{id}:
+ *   delete:
+ *     summary: Delete a guest profile
+ *     description: Only Admin, Manager, or Front Desk. Blocks deletion if guest has active stays.
+ *     tags: [Guests]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Guest deleted
+ *       400:
+ *         description: Guest has active stays — cannot delete
+ *       404:
+ *         description: Guest not found
+ */
+router.delete('/:id', authorize('ADMIN', 'MANAGER', 'FRONT_DESK'), async (req, res, next) => {
+  try {
+    const guest = await prisma.guest.findUnique({ where: { id: req.params.id } })
+    if (!guest) throw new AppError(404, 'Guest not found', 'NOT_FOUND')
+
+    const activeStay = await prisma.stay.findFirst({
+      where: { guestId: req.params.id, checkOutAt: null },
+    })
+    if (activeStay) throw new AppError(400, 'Cannot delete guest with active stays', 'INVALID_STATE')
+
+    await prisma.guest.delete({ where: { id: req.params.id } })
+    await logActivity({
+      actionType: 'GUEST_DELETED', entityType: 'GUEST',
+      entityId: req.params.id, staffId: req.staff!.staffId,
+    })
+    res.json({ success: true, message: 'Guest deleted' })
+  } catch (err) { next(err) }
+})
+
 export default router

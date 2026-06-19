@@ -180,7 +180,7 @@ router.post('/check-in', authorize('ADMIN', 'MANAGER', 'FRONT_DESK'), async (req
     )
 
     const { stay, bill } = await prisma.$transaction(async (tx) => {
-      const stay = await tx.stay.create({
+      const rawStay = await tx.stay.create({
         data: {
           reservationId,
           guestId: reservation.guestId,
@@ -188,9 +188,9 @@ router.post('/check-in', authorize('ADMIN', 'MANAGER', 'FRONT_DESK'), async (req
           checkInById: req.staff!.staffId,
         },
       })
-      const bill = await tx.bill.create({
+      const rawBill = await tx.bill.create({
         data: {
-          stayId: stay.id,
+          stayId: rawStay.id,
           totalAmount: reservation.totalAmount,
           createdById: req.staff!.staffId,
           lineItems: {
@@ -205,6 +205,14 @@ router.post('/check-in', authorize('ADMIN', 'MANAGER', 'FRONT_DESK'), async (req
       })
       await tx.reservation.update({ where: { id: reservationId }, data: { status: 'CHECKED_IN' } })
       await tx.room.update({ where: { id: reservation.roomId }, data: { status: 'OCCUPIED' } })
+      const stay = (await tx.stay.findUnique({
+        where: { id: rawStay.id },
+        include: { guest: true, room: true, reservation: true },
+      }))!
+      const bill = (await tx.bill.findUnique({
+        where: { id: rawBill.id },
+        include: { lineItems: true, payments: true },
+      }))!
       return { stay, bill }
     })
 
