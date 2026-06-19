@@ -1,12 +1,15 @@
 import 'dotenv/config'
 import app from './app'
 import prisma from './shared/db/prisma'
+import { startSyncWorker, stopSyncWorker } from './core/sync/syncWorker'
 
 const PORT = process.env.PORT ?? 3000
 
 async function main() {
   await prisma.$connect()
   console.log('✅ Database connected')
+
+  startSyncWorker()
 
   app.listen(PORT, () => {
     console.log(`🚀 Hotel backend running → http://localhost:${PORT}`)
@@ -22,6 +25,7 @@ main().catch((err) => {
 })
 
 process.on('SIGINT', async () => {
+  stopSyncWorker()
   await prisma.$disconnect()
   console.log('🛑 Server stopped')
   process.exit(0)

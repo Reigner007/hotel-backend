@@ -122,10 +122,12 @@ export async function generateDailySummary(date: Date, staffId: string) {
   })
 
   // ── Push to sync outbox for cloud pickup ──────────────────────────────────
+  const hotelId = process.env.HOTEL_ID || 'hotel-001'
   await prisma.syncOutbox.create({
     data: {
       eventType: 'DAILY_SUMMARY',
       payload: {
+        hotelId,
         date: dateOnly.toISOString(),
         totalRevenue,
         occupancyRate,
