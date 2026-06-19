@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { authenticate, authorize } from '../../shared/middleware/authenticate'
 import {
   createStaffHandler, getAllStaffHandler,
-  getStaffByIdHandler, updateStaffStatusHandler,
+  getStaffByIdHandler, updateStaffStatusHandler, deleteStaffHandler,
 } from './staff.controller'
 
 const router = Router()
@@ -176,5 +176,29 @@ router.get('/:id', authorize('ADMIN', 'MANAGER'), getStaffByIdHandler)
  *               $ref: '#/components/schemas/Error'
  */
 router.patch('/:id/status', authorize('ADMIN'), updateStaffStatusHandler)
+
+/**
+ * @swagger
+ * /staff/{id}:
+ *   delete:
+ *     summary: Delete a staff member
+ *     description: Admin only. Permanently removes a staff account.
+ *     tags: [Staff]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Staff member deleted
+ *       403:
+ *         description: Forbidden — admin role required
+ *       404:
+ *         description: Staff member not found
+ */
+router.delete('/:id', authorize('ADMIN'), deleteStaffHandler)
 
 export default router

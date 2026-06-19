@@ -55,6 +55,13 @@ export async function getStaffByIdHandler(req: Request, res: Response, next: Nex
   } catch (err) { next(err) }
 }
 
+export async function deleteStaffHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    await staffService.deleteStaff(req.params.id, req.staff!.staffId)
+    res.json({ success: true, data: null })
+  } catch (err) { next(err) }
+}
+
 export async function updateStaffStatusHandler(req: Request, res: Response, next: NextFunction) {
   try {
     let { status } = req.body

@@ -63,3 +63,16 @@ export async function updateStaffStatus(id: string, status: StaffStatus, updated
   })
   return staff
 }
+
+export async function deleteStaff(id: string, deletedById: string) {
+  const staff = await prisma.staff.findUnique({ where: { id } })
+  if (!staff) throw new AppError(404, 'Staff member not found', 'NOT_FOUND')
+
+  await prisma.staff.delete({ where: { id } })
+
+  await logActivity({
+    actionType: 'STAFF_DELETED', entityType: 'STAFF',
+    entityId: id, staffId: deletedById,
+    metadata: { username: staff.username, fullName: staff.fullName },
+  })
+}
