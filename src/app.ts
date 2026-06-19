@@ -20,6 +20,7 @@ import housekeepingRoutes from './modules/housekeeping/housekeeping.routes';
 import posRoutes from './modules/pos/pos.routes';
 import kitchenRoutes from './modules/kitchen/kitchen.routes';
 import reportingRoutes from './modules/reporting/reporting.routes';
+import activityLogRoutes from './core/activity-logs/activityLog.routes';
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 import { errorHandler } from './shared/middleware/errorHandler';
@@ -83,6 +84,7 @@ app.use(`${v1}/requests`, departmentReqRoutes);
 app.use(`${v1}/housekeeping`, housekeepingRoutes);
 app.use(`${v1}/pos`, posRoutes);
 app.use(`${v1}/kitchen`, kitchenRoutes);
+app.use(`${v1}/activity-logs`, activityLogRoutes);
 app.use(`${v1}/reporting`, reportingRoutes);
 
 // Hotel profile
